@@ -1,0 +1,69 @@
+from tkinter import *
+
+
+class MyWindow:
+    def __init__(self, win):
+        self.l1 = Label(win, text="1st Number: ", bg="#34ebe5", font=("Helvetica",13))
+        self.l2 = Label(win, text="2nd Number: ", bg="#34ebe5", font=("Helvetica",13))
+        self.l3 = Label(win, bg="#34ebe5", font=("Helvetica", 15))
+        # entry boxes for the first and second number
+        self.e1 = Entry(win, bd=3, font=("Robinson Typeface", 13))
+        self.e2 = Entry(win, bd=3, font=("Robinson Typeface", 13))
+        # entry box to print the result
+        self.btn1 = Button(win, text="Add", command=self.add, anchor="center", height = 2, width = 10, bg="black", fg="white")
+        self.btn2 = Button(win, text="Subtract", command=self.subtract, anchor="center", height=2, width =  10, bg="black", fg="white")
+        self.btn3 = Button(win,text="Multiply", command=self.multiply, anchor="center", height=2, width=10, bg="black", fg="white")
+        self.btn4 = Button(win, text="Divide", command=self.divide, anchor="center", height=2, width=10, bg="black", fg="white")
+        # button1.size(height=100, width=100)
+        # b = Button(window, text="Click me", fg="blue", font=("Calibri", 20), bd=10, height=10, width=10, bg=“black”)
+
+        # position the buttons, labels and entry boxes
+        self.l1.place(x=50, y=70)
+        self.l2.place(x=50, y=100)
+        self.l3.place(x=110,y=150)
+        self.e1.place(x=150, y=70)
+        self.e2.place(x=150, y=100)
+        self.btn1.place(x=90, y=190)
+        self.btn2.place(x=190, y=190)
+        self.btn3.place(x=90, y=240)
+        self.btn4.place(x=190, y=240)
+
+    def add(self):
+        # add the numbers by converting them to integers and back to a string to print the result
+        # error checking for a string entered by the user instead of int
+        num1 = int(self.e1.get())
+        num2 = int(self.e2.get())
+        result = num1+num2
+        self.l3.config(text="The sum is {}" .format(str(result)))
+
+    def subtract(self):
+        # subtract the numbers using the same logic
+        num1 = int(self.e1.get())
+        num2 = int(self.e2.get())
+        result = num1-num2
+        self.l3.config(text="The difference is {}".format(str(result)))
+
+    def multiply(self):
+        # multiply the two numbers and output the product
+        num1 = int(self.e1.get())
+        num2 = int(self.e2.get())
+        result = num1*num2
+        self.l3.config(text="The product is {}".format(str(result)))
+
+    def divide(self):
+        # divide the first number by the second number and print the result
+        num1 = int(self.e1.get())
+        num2 = int(self.e2.get())
+        result = num1/num2
+        self.l3.config(text="The quotient is {:.2f}".format(result))
+
+
+# make a calculator to add or subtract two numbers
+window = Tk()
+window.title("Adding and Subtracting Calculator")
+
+m = MyWindow(window)
+
+window.geometry("400x300")
+window.config(bg="#34ebe5")
+window.mainloop()
