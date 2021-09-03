@@ -1,0 +1,586 @@
+# import tkinter and sql modules
+from tkinter import *
+from tkinter import messagebox
+import mysql.connector
+from tkcalendar import DateEntry
+
+window = Tk()
+window.title("Login Page")
+
+# create a database in mysql called project and a table for the Username and passwords
+db_connect = mysql.connector.connect(host="localhost", user="root", password="root", database="project")
+db_cursor = db_connect.cursor()
+db_cursor.execute("create database if not exists project")
+db_cursor.execute("create table if not exists user(Username varchar(40) primary key, password varchar(40) not null)")
+# make an admin table
+db_cursor.execute("create table if not exists admin(Date varchar(40) not null, Item_Name varchar(40) not null, Price varchar(40) not null)")
+# insert the admin info in the table user
+db_cursor.execute("INSERT INTO user(Username, password) SELECT * FROM(SELECT 'admin', '999')\
+     as temp WHERE NOT EXISTS (SELECT username FROM user WHERE username = 'admin') LIMIT 1")
+# db_cursor.execute("GRANT ALL PRIVILEGES ON project.* TO 'admin'@'localhost'")
+db_connect.close()
+
+username = ""
+
+
+# function to open a new window for the sign up page
+class signup:
+    # function to model the layout for the sign up page
+    def __init__(self, w):
+        self.newwin = Toplevel(w)
+        self.newwin.title("Sign-up Page")
+        self.l = Label(self.newwin, text="SIGN-UP PAGE", font=("Nexa", 21))
+        self.l.place(x=140, y=80)
+        # get the user's first name, last name, username and password
+        self.lbl1 = Label(self.newwin, text="Enter your first name: ", font=("Arial", 13))
+        self.lbl2 = Label(self.newwin, text="Enter your last name: ", font=("Arial", 13))
+        self.lbl3 = Label(self.newwin, text="Enter your username: ", font=("Arial", 13))
+        self.lbl4 = Label(self.newwin, text="Enter your password: ", font=("Arial", 13))
+        self.lbl5 = Label(self.newwin,
+                          text="Password must:\nBe at least 8 characters long\nContain at least 1 special character ")
+
+        # entry boxes for the sign up information
+        self.e1 = Entry(self.newwin, font=("Arial", 13))
+        self.e2 = Entry(self.newwin, font=("Arial", 13))
+        self.e3 = Entry(self.newwin, font=("Arial", 13))
+        self.e4 = Entry(self.newwin, font=("Arial", 13), show='*')
+
+        # button to press once they are done signing up
+        self.btn = Button(self.newwin, text="Sign-Up", bg="#3491cf", fg="white", height=3, width=10,
+                          command=self.credentials_check)
+
+        # place the labels, entry boxes and button
+        self.lbl1.place(x=60, y=130)
+        self.lbl2.place(x=60, y=170)
+        self.lbl3.place(x=60, y=210)
+        self.lbl4.place(x=60, y=250)
+        self.lbl5.place(x=130, y=290)
+        self.e1.place(x=250, y=130)
+        self.e2.place(x=250, y=170)
+        self.e3.place(x=250, y=210)
+        self.e4.place(x=250, y=250)
+        self.btn.place(x=180, y=410)
+
+        self.newwin.geometry("500x600")
+        self.newwin.mainloop()
+
+    # function to check if the password meets the requirements once they are finished signing up
+    def credentials_check(self):
+        self.db_connect = mysql.connector.connect(host="localhost", user="root", password="root", database="project")
+        self.db_cursor = self.db_connect.cursor()
+        self.db_cursor.execute("select * from user")
+        # use the fetchall() method to get data from a table
+        self.username_list = self.db_cursor.fetchall()
+        if len(self.username_list) != 0:
+            # check if the username is already taken
+            if self.e3.get() in self.username_list:
+                messagebox.showerror("Error", "Username is already taken. Please enter a different username.")
+            # ensure the password meets the requirements before entering it into the system
+            elif len(self.e4.get()) < 8:
+                messagebox.showerror("Error", "Password is not at least 8 characters long. Please Try Again.")
+            elif self.e4.get().isalnum():
+                messagebox.showerror("Error", "Password does not contain a special character. Please Try Again")
+            else:
+                # add the username and password to the table containing all of the credentials
+                self.db_cursor.execute("INSERT INTO user(Username, password) VALUES('{}', '{}')".format(self.e3.get(), self.e4.get()))
+                self.db_cursor.execute("create table if not exists {}(Date varchar(40) not null, Item_Name varchar(40) not null, Price varchar(40) not null)".format(self.e3.get()))
+                self.db_connect.commit()
+                # close the sign up window once the sign up is complete
+                self.newwin.destroy()
+                # let the user know when the sign up is complete
+                messagebox.showinfo("Info", "Sign up successful! You may now login to view the expense tracking system page")
+        else:
+            if len(self.e4.get()) < 8:
+                messagebox.showerror("Error", "Password is not at least 8 characters long. Please Try Again.")
+            elif self.e4.get().isalnum():
+                messagebox.showerror("Error", "Password does not contain a special character. Please Try Again")
+            else:
+                # add the username and password to the table containing all of the credentials
+                self.db_cursor.execute("INSERT INTO user(Username, password) VALUES('{}', '{}')".format(self.e3.get(), self.e4.get()))
+                self.db_cursor.execute("create table if not exists {}(Date varchar(40) not null, Item_Name varchar(40) not null, Price varchar(40) not null)".format(self.e3.get()))
+                self.db_connect.commit()
+                # close the sign up window once the sign up is complete
+                self.newwin.destroy()
+                # let the user know when the sign up is complete
+                messagebox.showinfo("Info", "Sign up successful! You may now login to access the expense tracking system page")
+        self.db_connect.close()
+
+
+# purpose: make a login page for the user to enter their username and password if they have already created an account
+# labels for the username and password
+l1 = Label(window, text="Username: ", font=('Arial', 13, 'bold'))
+l2 = Label(window, text="Password: ", font=('Arial', 13, 'bold'))
+l = Label(window, text="DON'T HAVE AN ACCOUNT? ")
+
+login_pass = False
+
+
+# function to check if the login info matches records in mysql
+def login():
+    global login_pass, username
+    # get the username and password the user entered
+    username = e1.get()
+    password = e2.get()
+    # get all the data from the table user
+    db_connect = mysql.connector.connect(host="localhost", user="root", password="root", database="project")
+    db_cursor = db_connect.cursor()
+    db_cursor.execute("select * from user")
+    l = db_cursor.fetchall()
+    # check if the username and password matches any rows in the table user
+    for row in range(len(l)):
+        # if they are the admin, make an object of the admin class
+        if username == 'admin' and password == '999':
+           a = Admin(window)
+        if username == l[row][0] and password == l[row][1]:
+            login_pass = True
+    if not login_pass:
+        messagebox.showerror("Error","Username and/or Password are incorrect. If you have not done so already, you must sign up before logging in.")
+    elif login_pass:
+        e = Expense(window)
+
+
+# function call the sign up class if the user wants to sign up
+def pre_signup():
+    s = signup(window)
+
+
+# make entry boxes for the username and password
+e1 = Entry(window, bd=5)
+e2 = Entry(window, bd=5, show='*')
+b = Button(window, text="Login", command=login)
+b_up = Button(window, text="Sign Up", command=pre_signup)
+
+# position the labels and entry boxes
+l1.place(x=110, y=50)
+l2.place(x=110, y=90)
+e1.place(x=210, y=50)
+e2.place(x=210, y=90)
+# label to sign up
+l.place(x=165, y=185)
+# login button
+b.place(x=220, y=130)
+# sign up button
+b_up.place(x=215, y=220)
+
+
+class Expense:
+
+    global username
+
+    def __init__(self, w):
+
+        self.main_window = Toplevel(w)
+        self.main_window.title("Expenses Page")
+        self.main_window.config(bg="#c2b79b")
+
+        db_connect = mysql.connector.connect(host="localhost", user="root", password="root", database="project")
+        db_cursor = db_connect.cursor()
+
+        # fetch the data from the user's table in mysql
+        db_cursor.execute("SELECT * FROM {}".format(username))
+        l_expenses = db_cursor.fetchall()
+
+        # initialize variables before reference
+        self.d_plus = ""
+        self.i_plus = ""
+        self.p_plus = ""
+        self.total = 0
+
+        # create labels and entry boxes for the date, name of expenditure and price
+        self.lbl1 = Label(self.main_window, text="Date: ", font=('Arial', 18), bg="#d49d06", fg="white", width=20)
+        self.lbl2 = Label(self.main_window, text="Name of Expenditure: ", font=('Arial', 18), bg="#d49d06", fg="white",
+                          width=20)
+        self.lbl3 = Label(self.main_window, text="Price ($): ", font=('Arial', 18), bg="#d49d06", fg="white", width=20)
+        self.e1 = DateEntry(self.main_window, font=('Arial', 18))
+        self.e2 = Entry(self.main_window, font=('Arial', 18))
+        self.e3 = Entry(self.main_window, font=('Arial', 18))
+
+        # submit button to record the expense when they have filled in all the information
+        self.submit_btn = Button(self.main_window, text="SUBMIT", font=('Arial', 20), bg="#d49d06", fg="white",
+                                 width=15, activebackground="#ebaf0c", height=1, command=self.add_expense)
+
+        # place the labels, entry boxes and buttons on the window
+        self.lbl1.place(x=50, y=50)
+        self.lbl2.place(x=50, y=100)
+        self.lbl3.place(x=50, y=150)
+        self.e1.place(x=350, y=50)
+        self.e2.place(x=350, y=100)
+        self.e3.place(x=350, y=150)
+        self.submit_btn.place(x=195, y=200)
+
+        # make a row to view/print out the user's expenses
+        self.lbl4 = Label(self.main_window, text="DATE", font=('Arial', 18), bg="#d49d06", fg="black", width=15)
+        self.lbl5 = Label(self.main_window, text="ITEM PURCHASED", font=('Arial', 18), bg="#d49d06", fg="black",
+                          width=15)
+        self.lbl6 = Label(self.main_window, text="PRICE ($) ", font=('Arial', 18), bg="#d49d06", fg="black", width=15)
+
+        self.lbl4.place(x=100, y=300)
+        self.lbl5.place(x=400, y=300)
+        self.lbl6.place(x=700, y=300)
+
+        # make a label and entry box to display the total price of items purchased
+        self.lbl7 = Label(self.main_window, text="TOTAL ($): ", font=('Arial', 18, 'bold'), bg="#d49d06", fg="black",
+                          width=15)
+        self.lbl7.place(x=700, y=80)
+        self.e4 = Entry(self.main_window, font=('Arial', 20, 'bold'))
+        self.e4.place(x=650, y=130)
+
+        # label to print the the dates of the items the user purchased
+        self.display_dates = StringVar()
+        self.lbl8 = Label(self.main_window, font=('Arial', 16, 'italic'), textvariable=self.display_dates, bg="#c2b79b")
+        self.lbl8.place(x=100, y=350)
+
+        # add the dates of the existing expenditures from the user's account to the output
+        if len(l_expenses) > 0:
+            for i in range(len(l_expenses)):
+                self.d_plus += l_expenses[i][0] + "\n"
+            self.display_dates.set(self.d_plus)
+
+        # label to display the names of the expenditures
+        self.display_items = StringVar()
+        self.lbl9 = Label(self.main_window, font=('Arial', 16, 'italic'), textvariable=self.display_items, bg="#c2b79b")
+        self.lbl9.place(x=400, y=350)
+
+        # add the names of the existing expenditures from the user's account to the output
+        if len(l_expenses) > 0:
+            for i in range(len(l_expenses)):
+                self.i_plus += l_expenses[i][1] + "\n"
+            self.display_items.set(self.i_plus)
+
+        # label to display the prices of the expenditures
+        self.display_price = StringVar()
+        self.lbl10 = Label(self.main_window, font=('Arial', 16, 'italic'), textvariable=self.display_price, bg="#c2b79b")
+        self.lbl10.place(x=700, y=350)
+
+
+        # add the prices of the existing expenditures from the user's account to the output
+        if len(l_expenses) > 0:
+            for i in range(len(l_expenses)):
+                self.total += float(l_expenses[i][2])
+                self.p_plus += l_expenses[i][2] + "\n"
+            self.display_price.set(self.p_plus)
+
+        # display the total price of all of the user's items
+        self.e4.delete(0,END)
+        self.e4.insert(0,str(self.total))
+
+        # logout button
+        logout = Button(self.main_window, text="LOGOUT", font=('Arial', 14), bg="#d49d06", fg="gray",
+                        width=10, activebackground="#ebaf0c", height=1, command=self.logout)
+        logout.place(x=850, y=20)
+
+        # set the size of the window
+        self.main_window.geometry("1000x700")
+        self.main_window.mainloop()
+
+        db_connect.close()
+
+    def logout(self):
+        self.main_window.destroy()
+
+    def add_expense(self):
+
+        self.db_connect = mysql.connector.connect(host="localhost", user="root", password="root", database="project")
+        self.db_cursor = self.db_connect.cursor()
+
+        # ensure all fields are filled out
+        if self.e1.get() == "" or self.e2.get() == "" or self.e3.get() == "":
+            messagebox.showwarning("Warning", "Please fill in all required fields (Date, Name of Item, Price)")
+        # if all fields have been filled out, add it to the list of all expenditures
+        else:
+            # add the date, item name and price to their respective labels in order to display them
+            try:
+                self.s = self.display_dates.get()
+                self.d = self.e1.get()
+                self.i1 = self.display_items.get()
+                self.i2 = self.e2.get()
+                self.p1 = self.display_price.get()
+                self.p2 = self.e3.get()
+                # add the price of the item to the total cost
+                self.total += float(self.p2)
+                # add the date, item name and price to the particular user's table inside mysql
+                self.db_cursor.execute("INSERT INTO {}(Date, Item_Name, Price) VALUES('{}', '{}', '{}')".format(username, self.d, self.i2, self.p2))
+                self.db_connect.commit()
+                self.s += self.d + "\n"
+                self.i1 += self.i2 + "\n"
+                self.p1 += self.p2 + "\n"
+                self.display_dates.set(self.s)
+                self.display_items.set(self.i1)
+                self.display_price.set(self.p1)
+
+                # inform the user when the expenditure has been added
+                messagebox.showinfo("Info", "Expenditure has been successfully added")
+            except TypeError as e:
+                print(e)
+                messagebox.showerror("Error", "There was an error when attempting to process the expenditure.")
+
+        # update the total price of all of the user's items
+        self.e4.delete(0, END)
+        self.e4.insert(0, str(self.total))
+
+        self.db_connect.close()
+# end of Expense class
+
+
+# create a class for the administrator to view each user's expenses
+class Admin:
+
+    def __init__(self, w):
+
+        self.main_window = Toplevel(w)
+        self.main_window.title("Administrator Expenses Page")
+        self.main_window.config(bg="#7165e0")
+
+        db_connect = mysql.connector.connect(host="localhost", user="root", password="root", database="project")
+        db_cursor = db_connect.cursor()
+
+        # fetch the data from the admin table in mysql
+        db_cursor.execute("SELECT * FROM admin")
+        l_admin = db_cursor.fetchall()
+
+        # get the usernames and passwords of all users
+        db_cursor.execute("SELECT * FROM user")
+        self.l_credentials = db_cursor.fetchall()
+        self.l_credentials.append((1, 2))
+        print(self.l_credentials)
+
+        # initialize variables before reference
+        self.d_plus = ""
+        self.i_plus = ""
+        self.p_plus = ""
+        self.total = 0
+
+        # create a menubar with each of the users as a command for the admin to view the desired user's expenses
+        self.menubar = Menu(self.main_window)
+        self.main_window.config(menu=self.menubar)
+        self.my_users = Menu(self.menubar)
+        self.menubar.add_cascade(label="Users", menu=self.my_users)
+
+        # for loop adds each of the users to the menu bar
+        for i in range(1, len(self.l_credentials)):
+            print(i)
+            print(self.l_credentials)
+            self.my_users.add_command(label="{}".format(self.l_credentials[i][0]), command=lambda: self.callback(self.l_credentials[i-1][0]))
+            self.my_users.add_separator()
+
+        # create labels and entry boxes for the date, name of expenditure and price
+        self.lbl1 = Label(self.main_window, text="Date: ", font=('Arial', 18), bg="#d49d06", fg="white", width=20)
+        self.lbl2 = Label(self.main_window, text="Name of Expenditure: ", font=('Arial', 18), bg="#d49d06", fg="white",
+                          width=20)
+        self.lbl3 = Label(self.main_window, text="Price ($): ", font=('Arial', 18), bg="#d49d06", fg="white", width=20)
+        self.e1 = DateEntry(self.main_window, font=('Arial', 18))
+        self.e2 = Entry(self.main_window, font=('Arial', 18))
+        self.e3 = Entry(self.main_window, font=('Arial', 18))
+
+        # submit button to record the expense when they have filled in all the information
+        self.submit_btn = Button(self.main_window, text="SUBMIT", font=('Arial', 20), bg="#d49d06", fg="white",
+                                 width=15, activebackground="#ebaf0c", height=1, command=self.add_expense)
+
+        # place the labels, entry boxes and buttons on the window
+        self.lbl1.place(x=50, y=50)
+        self.lbl2.place(x=50, y=100)
+        self.lbl3.place(x=50, y=150)
+        self.e1.place(x=350, y=50)
+        self.e2.place(x=350, y=100)
+        self.e3.place(x=350, y=150)
+        self.submit_btn.place(x=195, y=200)
+
+        # make a row to view/print out the user's expenses
+        self.lbl4 = Label(self.main_window, text="DATE", font=('Arial', 18), bg="#d49d06", fg="black", width=15)
+        self.lbl5 = Label(self.main_window, text="ITEM PURCHASED", font=('Arial', 18), bg="#d49d06", fg="black",
+                          width=15)
+        self.lbl6 = Label(self.main_window, text="PRICE ($) ", font=('Arial', 18), bg="#d49d06", fg="black", width=15)
+
+        self.lbl4.place(x=100, y=300)
+        self.lbl5.place(x=400, y=300)
+        self.lbl6.place(x=700, y=300)
+
+        # make a label and entry box to display the total price of items purchased
+        self.lbl7 = Label(self.main_window, text="TOTAL ($): ", font=('Arial', 18, 'bold'), bg="#d49d06", fg="black",
+                          width=15)
+        self.lbl7.place(x=700, y=80)
+        self.e4 = Entry(self.main_window, font=('Arial', 20, 'bold'))
+        self.e4.place(x=650, y=130)
+
+        # label to print the the dates of the items the user purchased
+        self.display_dates = StringVar()
+        self.lbl8 = Label(self.main_window, font=('Arial', 16, 'italic'), textvariable=self.display_dates, bg="#7165e0")
+        self.lbl8.place(x=100, y=350)
+
+        # add the dates of the existing expenditures from the user's account to the output
+        if len(l_admin) > 0:
+            for i in range(len(l_admin)):
+                self.d_plus += l_admin[i][0] + "\n"
+            self.display_dates.set(self.d_plus)
+
+        # label to display the names of the expenditures
+        self.display_items = StringVar()
+        self.lbl9 = Label(self.main_window, font=('Arial', 16, 'italic'), textvariable=self.display_items, bg="#7165e0")
+        self.lbl9.place(x=400, y=350)
+
+        # add the names of the existing expenditures from the user's account to the output
+        if len(l_admin) > 0:
+            for i in range(len(l_admin)):
+                self.i_plus += l_admin[i][1] + "\n"
+            self.display_items.set(self.i_plus)
+
+        # label to display the prices of the expenditures
+        self.display_price = StringVar()
+        self.lbl10 = Label(self.main_window, font=('Arial', 16, 'italic'), textvariable=self.display_price, bg="#7165e0")
+        self.lbl10.place(x=700, y=350)
+
+        # add the prices of the existing expenditures from the user's account to the output
+        if len(l_admin) > 0:
+            for i in range(len(l_admin)):
+                self.total += float(l_admin[i][2])
+                self.p_plus += l_admin[i][2] + "\n"
+            self.display_price.set(self.p_plus)
+
+        # display the total price of all of the user's items
+        self.e4.delete(0, END)
+        self.e4.insert(0, str(self.total))
+
+        # logout button
+        logout = Button(self.main_window, text="LOGOUT", font=('Arial', 14), bg="#d49d06", fg="gray",
+                        width=10, activebackground="#ebaf0c", height=1, command=self.logout)
+        logout.place(x=850, y=20)
+
+        # set the size of the window
+        self.main_window.geometry("1000x700")
+        self.main_window.mainloop()
+
+        db_connect.close()
+
+    def callback(self, u):
+        self.pop_window = Toplevel(self.main_window)
+        self.pop_window.title("Expenses Page")
+        self.pop_window.config(bg="#c2b79b")
+
+        db_connect = mysql.connector.connect(host="localhost", user="root", password="root", database="project")
+        db_cursor = db_connect.cursor()
+
+        # fetch the data from the user's table in mysql
+        db_cursor.execute("SELECT * FROM {}".format(u))
+        l_expenses = db_cursor.fetchall()
+
+        # initialize variables before reference
+        self.d_plus = ""
+        self.i_plus = ""
+        self.p_plus = ""
+        self.total = 0
+
+        # make a row to view/print out the user's expenses
+        self.lbl4 = Label(self.pop_window, text="DATE", font=('Arial', 18), bg="#d49d06", fg="black", width=15)
+        self.lbl5 = Label(self.pop_window, text="ITEM PURCHASED", font=('Arial', 18), bg="#d49d06", fg="black",
+                          width=15)
+        self.lbl6 = Label(self.pop_window, text="PRICE ($) ", font=('Arial', 18), bg="#d49d06", fg="black", width=15)
+
+        self.lbl4.place(x=100, y=300)
+        self.lbl5.place(x=400, y=300)
+        self.lbl6.place(x=700, y=300)
+
+        # make a label and entry box to display the total price of items purchased
+        self.lbl7 = Label(self.pop_window, text="TOTAL ($): ", font=('Arial', 18, 'bold'), bg="#d49d06", fg="black",
+                          width=15)
+        self.lbl7.place(x=700, y=80)
+        self.e4 = Entry(self.pop_window, font=('Arial', 20, 'bold'))
+        self.e4.place(x=650, y=130)
+
+        # label to print the the dates of the items the user purchased
+        self.display_dates = StringVar()
+        self.lbl8 = Label(self.pop_window, font=('Arial', 16, 'italic'), textvariable=self.display_dates, bg="#c2b79b")
+        self.lbl8.place(x=100, y=350)
+
+        # add the dates of the existing expenditures from the user's account to the output
+        if len(l_expenses) > 0:
+            for i in range(len(l_expenses)):
+                self.d_plus += l_expenses[i][0] + "\n"
+            self.display_dates.set(self.d_plus)
+
+        # label to display the names of the expenditures
+        self.display_items = StringVar()
+        self.lbl9 = Label(self.pop_window, font=('Arial', 16, 'italic'), textvariable=self.display_items, bg="#c2b79b")
+        self.lbl9.place(x=400, y=350)
+
+        # add the names of the existing expenditures from the user's account to the output
+        if len(l_expenses) > 0:
+            for i in range(len(l_expenses)):
+                self.i_plus += l_expenses[i][1] + "\n"
+            self.display_items.set(self.i_plus)
+
+        # label to display the prices of the expenditures
+        self.display_price = StringVar()
+        self.lbl10 = Label(self.pop_window, font=('Arial', 16, 'italic'), textvariable=self.display_price,
+                           bg="#c2b79b")
+        self.lbl10.place(x=700, y=350)
+
+        # add the prices of the existing expenditures from the user's account to the output
+        if len(l_expenses) > 0:
+            for i in range(len(l_expenses)):
+                self.total += float(l_expenses[i][2])
+                self.p_plus += l_expenses[i][2] + "\n"
+            self.display_price.set(self.p_plus)
+
+        # display the total price of all of the user's items
+        self.e4.delete(0, END)
+        self.e4.insert(0, str(self.total))
+
+        # logout button
+        logout = Button(self.pop_window, text="LOGOUT", font=('Arial', 14), bg="#d49d06", fg="gray",
+                        width=10, activebackground="#ebaf0c", height=1, command=self.logout)
+        logout.place(x=850, y=20)
+
+        # set the size of the window
+        self.pop_window.geometry("1000x700")
+        self.pop_window.mainloop()
+
+        db_connect.close()
+
+    def logout(self):
+        self.main_window.destroy()
+
+    def add_expense(self):
+
+        self.db_connect = mysql.connector.connect(host="localhost", user="root", password="root", database="project")
+        self.db_cursor = self.db_connect.cursor()
+
+        # ensure all fields are filled out
+        if self.e1.get() == "" or self.e2.get() == "" or self.e3.get() == "":
+            messagebox.showwarning("Warning", "Please fill in all required fields (Date, Name of Item, Price)")
+        # if all fields have been filled out, add it to the list of all expenditures
+        else:
+            # add the date, item name and price to their respective labels in order to display them
+            try:
+                self.s = self.display_dates.get()
+                self.d = self.e1.get()
+                self.i1 = self.display_items.get()
+                self.i2 = self.e2.get()
+                self.p1 = self.display_price.get()
+                self.p2 = self.e3.get()
+                # add the price of the item to the total cost
+                self.total += float(self.p2)
+                # add the date, item name and price to the particular user's table inside mysql
+                self.db_cursor.execute("INSERT INTO admin(Date, Item_Name, Price) VALUES('{}', '{}', '{}')".format(self.d, self.i2, self.p2))
+                self.db_connect.commit()
+                self.s += self.d + "\n"
+                self.i1 += self.i2 + "\n"
+                self.p1 += self.p2 + "\n"
+                self.display_dates.set(self.s)
+                self.display_items.set(self.i1)
+                self.display_price.set(self.p1)
+
+                # update the total price of all of the user's items
+                self.e4.delete(0, END)
+                self.e4.insert(0, str(self.total))
+
+                # inform the user when the expenditure has been added
+                messagebox.showinfo("Info", "Expenditure has been successfully added")
+            except TypeError as e:
+                print(e)
+                messagebox.showerror("Error", "There was an error when attempting to process the expenditure.")
+
+        self.db_connect.close()
+
+# set the size of the login window
+window.geometry("500x300")
+window.mainloop()
